@@ -1,0 +1,60 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-parking_db}
+      POSTGRES_USER: ${POSTGRES_USER:-parking}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-parking}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    restart: unless-stopped
+    build:
+      context: ..
+      dockerfile: docker/backend.Dockerfile
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-parking}:${POSTGRES_PASSWORD:-parking}@postgres:5432/${POSTGRES_DB:-parking_db}
+      SECRET_KEY: ${SECRET_KEY:-dev-secret-key-change-in-production-123456}
+      YOLO_MODEL: ${YOLO_MODEL:-yolov8n.pt}
+      DEVICE: ${DEVICE:-cpu}
+      CONFIDENCE_THRESHOLD: ${CONFIDENCE_THRESHOLD:-0.40}
+      DWELL_TIME_SECONDS: ${DWELL_TIME_SECONDS:-30}
+      CORS_ORIGINS: "http://localhost:3000,http://127.0.0.1:3000,http://frontend:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../data:/app/data
+      - ../config:/app/config
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  frontend:
+    restart: unless-stopped
+    build:
+      context: ..
+      dockerfile: docker/frontend.Dockerfile
+    depends_on:
+      backend:
+        condition: service_started
+    ports:
+      - "3000:80"
+
+volumes:
+  postgres-data:

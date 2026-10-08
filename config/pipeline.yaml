@@ -1,0 +1,57 @@
+# ──────────────────────────────────────────────────────────────────
+# Two-Wheeler Parking Detection — Pipeline Configuration
+# All values here are overridable via environment variables (.env).
+# Edit this file to tune the pipeline without touching source code.
+# ──────────────────────────────────────────────────────────────────
+
+detection:
+  # YOLO model weights — relative to project root or absolute path.
+  # Use yolov8n.pt / yolov8s.pt / yolov8m.pt (pretrained) or your
+  # custom model from data/trained_models/two_wheeler_detector.pt
+  model_path: "yolov8n.pt"
+  # Two-wheeler COCO class names to keep (others are filtered out)
+  classes_to_detect: ["motorcycle", "bicycle"]
+  confidence_threshold: 0.40
+  iou_threshold: 0.45
+  # Inference device: cpu | cuda | mps
+  device: "cpu"
+  # Enable FP16 for GPU speedup (requires cuda device)
+  half_precision: false
+
+tracking:
+  # bytetrack (built into ultralytics) or deepsort (pip install deep-sort-realtime)
+  tracker_type: "bytetrack"
+  # Frames without a detection before a track is dropped
+  max_age: 30
+  # Detections needed before a track is confirmed
+  min_hits: 3
+
+dwell_time:
+  # Seconds a vehicle must remain stationary to be classified as "parked"
+  threshold_seconds: 30
+  # Max centroid movement (pixels) per frame to still be "stationary"
+  stationary_px_threshold: 15
+  # Number of consecutive frames over which to check stationarity
+  stationary_frames: 10
+
+feature_engineering:
+  # Scale factor: how many pixels represent 1 meter in your footage.
+  # Measure a known reference object (e.g. parking bay width = 2.5m)
+  px_per_meter: 50.0
+  # Minimum IoU overlap with walkway zone to flag obstruction
+  walkway_overlap_threshold: 0.05
+
+paths:
+  zone_config: "config/zones.json"
+  evidence_dir: "data/evidence"
+  features_csv: "data/features/features.csv"
+  trained_models_dir: "data/trained_models"
+  annotations_dir: "data/annotations"
+
+output:
+  # Save annotated frame snapshots when a parking violation is detected
+  save_evidence_snapshots: true
+  # Draw bounding boxes + labels on output video (if --output-video is set)
+  draw_detections: true
+  # Also write raw feature rows even for "safe" parked vehicles
+  write_all_parked_features: true

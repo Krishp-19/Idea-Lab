@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ParkWatch AI — Two-Wheeler Illegal Parking Monitor</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    .tab-btn.active { background-color: #0284c7; color: white; border-color: #0284c7; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col antialiased">
+
+  <!-- Header / Navigation -->
+  <header class="bg-slate-900 border-b border-slate-800 sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        <div class="flex items-center space-x-3">
+          <div class="h-10 w-10 rounded-xl bg-sky-600 flex items-center justify-center text-xl shadow-lg">
+            🏍️
+          </div>
+          <div>
+            <span class="font-bold text-lg text-white tracking-wide flex items-center gap-2">
+              ParkWatch AI
+              <span class="text-[11px] bg-emerald-950 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded-full font-semibold">
+                SYSTEM ONLINE
+              </span>
+            </span>
+            <p class="text-xs text-slate-400">Two-Wheeler Illegal Parking Detection & Monitoring</p>
+          </div>
+        </div>
+
+        <nav class="hidden md:flex space-x-2">
+          <button onclick="switchTab('feed')" class="tab-btn active px-3.5 py-1.5 rounded-lg text-xs font-semibold border border-slate-700 hover:bg-slate-800 transition-colors" id="btn-feed">
+            📹 Live Feed
+          </button>
+          <button onclick="switchTab('violations')" class="tab-btn px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-300 border border-slate-700 hover:bg-slate-800 transition-colors" id="btn-violations">
+            🚨 Violations Review <span id="pending-badge" class="ml-1 bg-rose-600 text-white px-1.5 py-0.2 rounded-full text-[10px]">3</span>
+          </button>
+          <button onclick="switchTab('trends')" class="tab-btn px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-300 border border-slate-700 hover:bg-slate-800 transition-colors" id="btn-trends">
+            📈 Trends
+          </button>
+          <button onclick="switchTab('heatmap')" class="tab-btn px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-300 border border-slate-700 hover:bg-slate-800 transition-colors" id="btn-heatmap">
+            🗺️ Heatmap
+          </button>
+          <button onclick="switchTab('zones')" class="tab-btn px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-300 border border-slate-700 hover:bg-slate-800 transition-colors" id="btn-zones">
+            📐 Zones
+          </button>
+          <button onclick="switchTab('upload')" class="tab-btn px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-300 border border-slate-700 hover:bg-slate-800 transition-colors" id="btn-upload">
+            📤 Upload Footage
+          </button>
+        </nav>
+
+        <div class="flex items-center space-x-3">
+          <span class="text-xs bg-slate-800 border border-slate-700 px-3 py-1 rounded-full text-slate-300">
+            Supervisor: <strong>admin</strong>
+          </span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
+
+    <!-- KPI Metric Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm">
+        <div class="flex justify-between items-center">
+          <div>
+            <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Total Violations</p>
+            <p class="text-2xl font-bold text-white mt-1" id="stat-total">18</p>
+            <p class="text-[11px] text-rose-400 mt-1">▲ 4 flagged today</p>
+          </div>
+          <div class="p-3 bg-rose-500/10 text-rose-400 border border-rose-500/20 rounded-xl text-xl">🚨</div>
+        </div>
+      </div>
+
+      <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm">
+        <div class="flex justify-between items-center">
+          <div>
+            <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Pending Review</p>
+            <p class="text-2xl font-bold text-amber-400 mt-1" id="stat-pending">3</p>
+            <p class="text-[11px] text-slate-400 mt-1">Requires human verification</p>
+          </div>
+          <div class="p-3 bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded-xl text-xl">⏳</div>
+        </div>
+      </div>
+
+      <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm">
+        <div class="flex justify-between items-center">
+          <div>
+            <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Confirmed Actions</p>
+            <p class="text-2xl font-bold text-emerald-400 mt-1" id="stat-confirmed">12</p>
+            <p class="text-[11px] text-slate-400 mt-1">Verified by supervisor</p>
+          </div>
+          <div class="p-3 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-xl text-xl">✅</div>
+        </div>
+      </div>
+
+      <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm">
+        <div class="flex justify-between items-center">
+          <div>
+            <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Active Two-Wheelers</p>
+            <p class="text-2xl font-bold text-sky-400 mt-1" id="stat-active">7</p>
+            <p class="text-[11px] text-slate-400 mt-1">YOLOv8 + ByteTrack active</p>
+          </div>
+          <div class="p-3 bg-sky-500/10 text-sky-400 border border-sky-500/20 rounded-xl text-xl">🏍️</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 1: LIVE FEED -->
+    <div id="tab-feed" class="tab-content space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Live Stream Simulated Canvas -->
+        <div class="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-sm space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              <h2 class="font-semibold text-white text-sm">CCTV Stream — Camera 01 (North Parking Lot)</h2>
+            </div>
+            <span class="text-xs font-mono text-slate-400 bg-slate-950 px-2.5 py-1 rounded border border-slate-800">
+              FPS: 28.4 • YOLOv8n (CPU/CUDA)
+            </span>
+          </div>
+
+          <div class="relative bg-black rounded-lg overflow-hidden border border-slate-800 flex justify-center">
+            <canvas id="live-canvas" width="700" height="420" class="w-full max-w-full h-auto"></canvas>
+            <div class="absolute bottom-3 left-3 bg-slate-950/85 backdrop-blur px-3 py-1 rounded-md text-xs font-mono text-emerald-400 border border-slate-800">
+              ● STREAM STABLE • DWELL FILTER: 30s
+            </div>
+          </div>
+
+          <div class="flex flex-wrap items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-800">
+            <span>Zones Loaded: <strong>Bay-A, Bay-B, Bay-C, Fire-Lane-01, Walkway-North</strong></span>
+            <span class="text-sky-400 cursor-pointer hover:underline" onclick="switchTab('violations')">
+              Review 3 flagged violations →
+            </span>
+          </div>
+        </div>
+
+        <!-- Real-time Activity Feed -->
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-sm space-y-4">
+          <div class="flex items-center justify-between">
+            <h2 class="font-semibold text-white text-sm">Live Parking Events</h2>
+            <span class="text-xs text-slate-400 font-mono" id="feed-clock">Live</span>
+          </div>
+
+          <div class="space-y-3" id="live-event-list">
+            <!-- Rendered by JS -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2: VIOLATIONS REVIEW -->
+    <div id="tab-violations" class="tab-content hidden space-y-4">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h2 class="text-lg font-bold text-white">Violations Review Queue</h2>
+          <p class="text-xs text-slate-400">Examine AI detection features, orientation deviation, and confirm or dismiss citations.</p>
+        </div>
+        <div class="flex items-center space-x-2">
+          <button onclick="filterViolations('all')" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-xs rounded-lg text-slate-300">All</button>
+          <button onclick="filterViolations('violation')" class="px-3 py-1 bg-rose-950/80 border border-rose-800 text-rose-300 hover:bg-rose-900 text-xs rounded-lg">Violations</button>
+          <button onclick="filterViolations('risk')" class="px-3 py-1 bg-amber-950/80 border border-amber-800 text-amber-300 hover:bg-amber-900 text-xs rounded-lg">Risk Warnings</button>
+          <button onclick="filterViolations('safe')" class="px-3 py-1 bg-emerald-950/80 border border-emerald-800 text-emerald-300 hover:bg-emerald-900 text-xs rounded-lg">Safe</button>
+        </div>
+      </div>
+
+      <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs text-slate-300">
+            <thead class="bg-slate-950 text-slate-400 uppercase tracking-wider text-[11px] border-b border-slate-800">
+              <tr>
+                <th class="py-3 px-4">Case #</th>
+                <th class="py-3 px-4">Vehicle Track</th>
+                <th class="py-3 px-4">Zone / Location</th>
+                <th class="py-3 px-4">Classification</th>
+                <th class="py-3 px-4">Dwell Time</th>
+                <th class="py-3 px-4">Status</th>
+                <th class="py-3 px-4 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-800" id="violations-tbody">
+              <!-- Rows inserted by JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: TRENDS -->
+    <div id="tab-trends" class="tab-content hidden space-y-6">
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="font-bold text-white text-base">30-Day Parking Compliance Trends</h2>
+            <p class="text-xs text-slate-400">Daily breakdown of Safe, Risk, and Violation behavior.</p>
+          </div>
+          <span class="text-xs font-mono bg-slate-950 px-2.5 py-1 rounded text-sky-400 border border-slate-800">
+            Total 30d Events: 245
+          </span>
+        </div>
+
+        <div class="h-64 w-full flex items-end space-x-2 pt-6 pb-2 px-4 bg-slate-950 rounded-lg border border-slate-800" id="trend-bar-chart">
+          <!-- Rendered by JS -->
+        </div>
+
+        <div class="flex items-center justify-center space-x-6 text-xs text-slate-400">
+          <div class="flex items-center space-x-1.5"><span class="w-3 h-3 rounded bg-emerald-500"></span><span>Safe Parking</span></div>
+          <div class="flex items-center space-x-1.5"><span class="w-3 h-3 rounded bg-amber-500"></span><span>Risk Warning</span></div>
+          <div class="flex items-center space-x-1.5"><span class="w-3 h-3 rounded bg-rose-500"></span><span>Violations</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 4: HEATMAP -->
+    <div id="tab-heatmap" class="tab-content hidden space-y-6">
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4">
+        <div>
+          <h2 class="font-bold text-white text-base">Parking Lot Spatial Heatmap</h2>
+          <p class="text-xs text-slate-400">Violation density hotspots mapped onto designated bays and restricted corridors.</p>
+        </div>
+
+        <div class="flex justify-center bg-black rounded-lg p-2 border border-slate-800">
+          <canvas id="heatmap-canvas" width="700" height="380" class="w-full max-w-full h-auto"></canvas>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+          <div class="bg-slate-950 p-3 rounded-lg border border-slate-800">
+            <span class="text-rose-400 font-bold block text-sm">Fire Lane (Zone-FL)</span>
+            <span class="text-slate-400">9 violations recorded • High risk hazard</span>
+          </div>
+          <div class="bg-slate-950 p-3 rounded-lg border border-slate-800">
+            <span class="text-amber-400 font-bold block text-sm">Walkway North</span>
+            <span class="text-slate-400">5 violations recorded • Pedestrian obstruction</span>
+          </div>
+          <div class="bg-slate-950 p-3 rounded-lg border border-slate-800">
+            <span class="text-emerald-400 font-bold block text-sm">Bays A1 - A5</span>
+            <span class="text-slate-400">92% compliance rate • Safe parking</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 5: ZONES -->
+    <div id="tab-zones" class="tab-content hidden space-y-6">
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4">
+        <div class="flex justify-between items-center">
+          <div>
+            <h2 class="font-bold text-white text-base">Configured Site Zones (config/zones.json)</h2>
+            <p class="text-xs text-slate-400">Defined bays, target parking angles, and restricted safety corridors.</p>
+          </div>
+          <button onclick="alert('To open interactive OpenCV drawer: python ml/zone_config/zone_drawer.py --frame data/raw_images/sample.jpg')" class="px-3 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-semibold">
+            + Draw New Zone
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs" id="zones-grid">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 6: UPLOAD -->
+    <div id="tab-upload" class="tab-content hidden space-y-6">
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-4 max-w-2xl mx-auto">
+        <h2 class="font-bold text-white text-base">Upload Video or Camera Footage</h2>
+        <p class="text-xs text-slate-400">The pipeline will run YOLOv8 two-wheeler detection, ByteTrack, dwell-time evaluation, and feature classification.</p>
+
+        <div class="border-2 border-dashed border-slate-700 hover:border-slate-500 rounded-xl p-8 text-center cursor-pointer bg-slate-950/40" onclick="simulateUpload()">
+          <div class="text-4xl mb-2">📹</div>
+          <p class="text-sm font-semibold text-white">Click to select video (.mp4, .avi) or drop here</p>
+          <p class="text-xs text-slate-400 mt-1">Simulates file ingestion and processing</p>
+        </div>
+
+        <div id="upload-status" class="hidden p-3 bg-sky-950 border border-sky-800 rounded-lg text-xs text-sky-400">
+          Uploading and running pipeline...
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Interactive Review Modal -->
+  <div id="review-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+    <div class="bg-slate-900 border border-slate-700 rounded-xl max-w-md w-full p-6 shadow-2xl relative space-y-4">
+      <div class="flex justify-between items-center">
+        <h3 class="text-base font-bold text-white" id="modal-title">Review Case #001</h3>
+        <button onclick="closeModal()" class="text-slate-400 hover:text-white font-bold text-lg">&times;</button>
+      </div>
+
+      <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 text-xs space-y-2">
+        <div class="flex justify-between"><span class="text-slate-400">Track ID:</span><span id="modal-track" class="text-white font-mono">#4</span></div>
+        <div class="flex justify-between"><span class="text-slate-400">Zone:</span><span id="modal-zone" class="text-white">Fire Lane</span></div>
+        <div class="flex justify-between"><span class="text-slate-400">Classification:</span><span id="modal-label" class="font-bold uppercase text-rose-400">VIOLATION</span></div>
+        <div class="flex justify-between"><span class="text-slate-400">Dwell Stationary Time:</span><span id="modal-dwell" class="text-white">142s</span></div>
+        <div class="flex justify-between"><span class="text-slate-400">Walkway / Fire Hazard:</span><span class="text-rose-400 font-semibold">YES</span></div>
+      </div>
+
+      <div>
+        <label class="block text-xs font-semibold text-slate-300 mb-1">Supervisor Verification Notes:</label>
+        <textarea id="modal-notes" class="w-full h-20 bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none focus:border-sky-500" placeholder="e.g. Confirmed parked across emergency egress corridor..."></textarea>
+      </div>
+
+      <div class="flex justify-end space-x-2 pt-2 border-t border-slate-800">
+        <button onclick="closeModal()" class="px-3 py-1.5 bg-slate-800 text-slate-300 text-xs rounded-lg hover:bg-slate-700">Cancel</button>
+        <button onclick="resolveCase('dismissed')" class="px-3 py-1.5 bg-slate-700 text-slate-200 text-xs rounded-lg hover:bg-slate-600">Dismiss Citation</button>
+        <button onclick="resolveCase('confirmed')" class="px-4 py-1.5 bg-rose-600 text-white text-xs font-semibold rounded-lg hover:bg-rose-500 shadow">Confirm Violation</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // State
+    let currentTab = 'feed';
+    let activeCaseId = null;
+
+    let cases = [
+      { id: 'CASE-001', track: 4, zone: 'Fire Lane', label: 'violation', dwell: 142, status: 'pending', notes: '', time: '01:28:10' },
+      { id: 'CASE-002', track: 9, zone: 'Bay A2', label: 'risk', dwell: 98, status: 'pending', notes: '', time: '01:25:44' },
+      { id: 'CASE-003', track: 12, zone: 'Walkway North', label: 'violation', dwell: 210, status: 'pending', notes: '', time: '01:22:15' },
+      { id: 'CASE-004', track: 2, zone: 'Bay A1', label: 'safe', dwell: 340, status: 'confirmed', notes: 'Proper alignment', time: '01:15:30' },
+      { id: 'CASE-005', track: 7, zone: 'Bay B3', label: 'safe', dwell: 180, status: 'confirmed', notes: '', time: '01:10:02' },
+      { id: 'CASE-006', track: 15, zone: 'Outside Lot', label: 'violation', dwell: 75, status: 'confirmed', notes: 'Obstruction', time: '01:05:22' },
+    ];
+
+    const zones = [
+      { id: 'bay-1', name: 'Bay A (Spots 1-5)', type: 'parking_bay', angle: 90, color: '#0284c7' },
+      { id: 'bay-2', name: 'Bay B (Spots 6-10)', type: 'parking_bay', angle: 90, color: '#0284c7' },
+      { id: 'fl-1', name: 'Fire Lane Emergency', type: 'fire_lane', angle: 0, color: '#ef4444' },
+      { id: 'walk-1', name: 'Walkway North Gate', type: 'walkway', angle: 0, color: '#f59e0b' },
+    ];
+
+    function switchTab(tab) {
+      currentTab = tab;
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.tab-btn').forEach(el => {
+        el.classList.remove('active', 'bg-sky-600', 'text-white');
+        el.classList.add('text-slate-300');
+      });
+
+      const activeEl = document.getElementById('tab-' + tab);
+      if (activeEl) activeEl.classList.remove('hidden');
+
+      const activeBtn = document.getElementById('btn-' + tab);
+      if (activeBtn) {
+        activeBtn.classList.add('active', 'bg-sky-600', 'text-white');
+        activeBtn.classList.remove('text-slate-300');
+      }
+
+      if (tab === 'feed') renderLiveCanvas();
+      if (tab === 'heatmap') renderHeatmapCanvas();
+      if (tab === 'trends') renderTrends();
+    }
+
+    function renderLiveFeedList() {
+      const el = document.getElementById('live-event-list');
+      el.innerHTML = cases.slice(0, 4).map(c => `
+        <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 flex items-center justify-between">
+          <div>
+            <div class="flex items-center space-x-2">
+              <span class="w-2 h-2 rounded-full ${c.label === 'violation' ? 'bg-rose-500' : c.label === 'risk' ? 'bg-amber-500' : 'bg-emerald-500'}"></span>
+              <span class="font-bold text-xs uppercase ${c.label === 'violation' ? 'text-rose-400' : c.label === 'risk' ? 'text-amber-400' : 'text-emerald-400'}">${c.label}</span>
+              <span class="text-slate-400 text-[11px]">Track #${c.track}</span>
+            </div>
+            <div class="text-[11px] text-slate-400 mt-1">${c.zone} • Dwell ${c.dwell}s</div>
+          </div>
+          <button onclick="openReview('${c.id}')" class="px-2.5 py-1 text-xs bg-slate-800 hover:bg-slate-700 text-sky-400 rounded">Review</button>
+        </div>
+      `).join('');
+    }
+
+    function renderViolationsTable(filter = 'all') {
+      const tbody = document.getElementById('violations-tbody');
+      const filtered = filter === 'all' ? cases : cases.filter(c => c.label === filter);
+      tbody.innerHTML = filtered.map(c => `
+        <tr class="hover:bg-slate-800/40">
+          <td class="py-3 px-4 font-mono font-medium text-white">${c.id}</td>
+          <td class="py-3 px-4">Track #${c.track} (Motorcycle)</td>
+          <td class="py-3 px-4">${c.zone}</td>
+          <td class="py-3 px-4">
+            <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase ${c.label === 'violation' ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' : c.label === 'risk' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'}">
+              ${c.label}
+            </span>
+          </td>
+          <td class="py-3 px-4 font-mono">${c.dwell}s</td>
+          <td class="py-3 px-4 capitalize font-semibold ${c.status === 'confirmed' ? 'text-rose-400' : c.status === 'dismissed' ? 'text-slate-400' : 'text-amber-400'}">
+            ${c.status}
+          </td>
+          <td class="py-3 px-4 text-right">
+            <button onclick="openReview('${c.id}')" class="px-2.5 py-1 text-xs bg-sky-950 border border-sky-800 text-sky-400 rounded hover:bg-sky-900">Review</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function filterViolations(f) {
+      renderViolationsTable(f);
+    }
+
+    function openReview(id) {
+      activeCaseId = id;
+      const c = cases.find(x => x.id === id);
+      if (!c) return;
+
+      document.getElementById('modal-title').innerText = `Review Case ${c.id}`;
+      document.getElementById('modal-track').innerText = `#${c.track}`;
+      document.getElementById('modal-zone').innerText = c.zone;
+      document.getElementById('modal-dwell').innerText = `${c.dwell}s`;
+      document.getElementById('modal-label').innerText = c.label;
+      document.getElementById('modal-label').className = `font-bold uppercase ${c.label === 'violation' ? 'text-rose-400' : c.label === 'risk' ? 'text-amber-400' : 'text-emerald-400'}`;
+      document.getElementById('modal-notes').value = c.notes || '';
+      document.getElementById('review-modal').classList.remove('hidden');
+    }
+
+    function closeModal() {
+      document.getElementById('review-modal').classList.add('hidden');
+    }
+
+    function resolveCase(newStatus) {
+      const c = cases.find(x => x.id === activeCaseId);
+      if (c) {
+        c.status = newStatus;
+        c.notes = document.getElementById('modal-notes').value;
+      }
+      closeModal();
+      updateMetrics();
+      renderViolationsTable();
+      renderLiveFeedList();
+    }
+
+    function updateMetrics() {
+      const pendingCount = cases.filter(c => c.status === 'pending').length;
+      const confirmedCount = cases.filter(c => c.status === 'confirmed').length;
+      document.getElementById('stat-pending').innerText = pendingCount;
+      document.getElementById('pending-badge').innerText = pendingCount;
+      document.getElementById('stat-confirmed').innerText = confirmedCount;
+    }
+
+    function renderLiveCanvas() {
+      const canvas = document.getElementById('live-canvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+
+      // Draw parking lot floor
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Draw grid lines
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 1;
+      for (let x = 0; x < canvas.width; x += 40) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+      }
+      for (let y = 0; y < canvas.height; y += 40) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+      }
+
+      // 1. Draw Designated Bay A
+      ctx.strokeStyle = '#0284c7'; ctx.fillStyle = 'rgba(2, 132, 199, 0.15)'; ctx.lineWidth = 2;
+      ctx.fillRect(50, 60, 260, 140);
+      ctx.strokeRect(50, 60, 260, 140);
+      ctx.fillStyle = '#38bdf8'; ctx.font = 'bold 12px sans-serif';
+      ctx.fillText('BAY A (TWO-WHEELERS ONLY)', 60, 80);
+
+      // Bay sub-slots
+      for (let i = 1; i <= 3; i++) {
+        ctx.strokeStyle = 'rgba(2, 132, 199, 0.4)';
+        ctx.beginPath(); ctx.moveTo(50 + i * 65, 60); ctx.lineTo(50 + i * 65, 200); ctx.stroke();
+      }
+
+      // 2. Draw Fire Lane (Red restricted zone)
+      ctx.strokeStyle = '#ef4444'; ctx.fillStyle = 'rgba(239, 68, 68, 0.15)'; ctx.lineWidth = 2;
+      ctx.fillRect(380, 60, 280, 100);
+      ctx.strokeRect(380, 60, 280, 100);
+      ctx.fillStyle = '#f87171'; ctx.font = 'bold 12px sans-serif';
+      ctx.fillText('FIRE LANE — NO STOPPING / PARKING', 390, 80);
+
+      // 3. Draw Walkway (Yellow pedestrian zone)
+      ctx.strokeStyle = '#f59e0b'; ctx.fillStyle = 'rgba(245, 158, 11, 0.15)'; ctx.lineWidth = 2;
+      ctx.fillRect(50, 260, 610, 80);
+      ctx.strokeRect(50, 260, 610, 80);
+      ctx.fillStyle = '#fbbf24'; ctx.font = 'bold 12px sans-serif';
+      ctx.fillText('PEDESTRIAN WALKWAY — KEEP CLEAR', 60, 280);
+
+      // --- Draw Detected Vehicles with Bounding Boxes ---
+
+      // Vehicle 1: Safe in Bay A (Green)
+      ctx.strokeStyle = '#10b981'; ctx.lineWidth = 3;
+      ctx.strokeRect(70, 95, 45, 80);
+      ctx.fillStyle = '#10b981';
+      ctx.fillRect(70, 75, 75, 18);
+      ctx.fillStyle = '#ffffff'; ctx.font = 'bold 10px sans-serif';
+      ctx.fillText('#2 SAFE 90°', 74, 88);
+
+      // Vehicle 2: Risk misaligned in Bay A (Amber)
+      ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 3;
+      ctx.strokeRect(145, 95, 55, 75);
+      ctx.fillStyle = '#f59e0b';
+      ctx.fillRect(145, 75, 78, 18);
+      ctx.fillStyle = '#ffffff'; ctx.font = 'bold 10px sans-serif';
+      ctx.fillText('#9 RISK 42°', 149, 88);
+
+      // Vehicle 3: VIOLATION parked in Fire Lane (Red)
+      ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 3;
+      ctx.strokeRect(460, 75, 60, 75);
+      ctx.fillStyle = '#ef4444';
+      ctx.fillRect(460, 55, 110, 18);
+      ctx.fillStyle = '#ffffff'; ctx.font = 'bold 10px sans-serif';
+      ctx.fillText('#4 VIOLATION [FL]', 464, 68);
+
+      // Vehicle 4: VIOLATION blocking Walkway (Red)
+      ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 3;
+      ctx.strokeRect(300, 270, 65, 60);
+      ctx.fillStyle = '#ef4444';
+      ctx.fillRect(300, 250, 115, 18);
+      ctx.fillStyle = '#ffffff'; ctx.font = 'bold 10px sans-serif';
+      ctx.fillText('#12 VIOLATION [WALK]', 304, 263);
+    }
+
+    function renderHeatmapCanvas() {
+      const canvas = document.getElementById('heatmap-canvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#090d16'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Draw Zones with Intensity Alpha
+      // Fire Lane (High Violations = Dark Red)
+      ctx.fillStyle = 'rgba(239, 68, 68, 0.7)'; ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 2;
+      ctx.fillRect(380, 50, 280, 120); ctx.strokeRect(380, 50, 280, 120);
+      ctx.fillStyle = '#ffffff'; ctx.font = 'bold 13px sans-serif';
+      ctx.fillText('Fire Lane: 9 Violations', 440, 115);
+
+      // Walkway (Medium Violations = Amber/Red)
+      ctx.fillStyle = 'rgba(245, 158, 11, 0.5)'; ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 2;
+      ctx.fillRect(50, 220, 610, 90); ctx.strokeRect(50, 220, 610, 90);
+      ctx.fillStyle = '#ffffff'; ctx.font = 'bold 13px sans-serif';
+      ctx.fillText('Walkway North: 5 Violations', 260, 270);
+
+      // Bay A (Safe = Light Blue)
+      ctx.fillStyle = 'rgba(2, 132, 199, 0.2)'; ctx.strokeStyle = '#0284c7'; ctx.lineWidth = 2;
+      ctx.fillRect(50, 50, 280, 120); ctx.strokeRect(50, 50, 280, 120);
+      ctx.fillStyle = '#38bdf8'; ctx.font = 'bold 13px sans-serif';
+      ctx.fillText('Bay A: 92% Compliance', 110, 115);
+    }
+
+    function renderTrends() {
+      const el = document.getElementById('trend-bar-chart');
+      const data = [
+        { day: '09/16', safe: 12, risk: 3, vio: 4 },
+        { day: '09/17', safe: 15, risk: 2, vio: 2 },
+        { day: '09/18', safe: 18, risk: 4, vio: 5 },
+        { day: '09/19', safe: 14, risk: 3, vio: 3 },
+        { day: '09/20', safe: 20, risk: 5, vio: 6 },
+        { day: '09/21', safe: 16, risk: 2, vio: 2 },
+        { day: '09/22', safe: 19, risk: 3, vio: 4 },
+      ];
+
+      el.innerHTML = data.map(d => {
+        const total = d.safe + d.risk + d.vio;
+        const hSafe = (d.safe / 30) * 180;
+        const hRisk = (d.risk / 30) * 180;
+        const hVio = (d.vio / 30) * 180;
+        return `
+          <div class="flex-1 flex flex-col items-center gap-1 group">
+            <div class="w-full max-w-[40px] flex flex-col justify-end h-48 bg-slate-900 rounded-t overflow-hidden">
+              <div style="height: ${hVio}px" class="bg-rose-500 w-full" title="Violations: ${d.vio}"></div>
+              <div style="height: ${hRisk}px" class="bg-amber-500 w-full" title="Risk: ${d.risk}"></div>
+              <div style="height: ${hSafe}px" class="bg-emerald-500 w-full" title="Safe: ${d.safe}"></div>
+            </div>
+            <span class="text-[10px] font-mono text-slate-400 mt-1">${d.day}</span>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderZonesGrid() {
+      const el = document.getElementById('zones-grid');
+      el.innerHTML = zones.map(z => `
+        <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
+          <div class="flex justify-between items-center">
+            <h3 class="font-bold text-white">${z.name}</h3>
+            <span class="px-2 py-0.5 rounded text-[10px] font-mono uppercase bg-slate-800 text-slate-300">${z.type}</span>
+          </div>
+          <p class="text-slate-400">Target Angle: <strong>${z.angle}°</strong></p>
+          <p class="text-slate-400">Zone ID: <code class="text-sky-400 font-mono">${z.id}</code></p>
+        </div>
+      `).join('');
+    }
+
+    function simulateUpload() {
+      const el = document.getElementById('upload-status');
+      el.classList.remove('hidden');
+      el.innerText = 'Analyzing sample footage with YOLOv8 & ByteTrack...';
+      setTimeout(() => {
+        el.innerText = 'Extracting 9 parking features & classifying Safe / Risk / Violation...';
+        setTimeout(() => {
+          el.innerText = '✓ Analysis complete! Added 2 new detections to violations review queue.';
+          cases.unshift({
+            id: 'CASE-00' + (cases.length + 1),
+            track: 18,
+            zone: 'Fire Lane',
+            label: 'violation',
+            dwell: 65,
+            status: 'pending',
+            notes: 'Auto-detected from uploaded footage',
+            time: new Date().toLocaleTimeString()
+          });
+          updateMetrics();
+          renderViolationsTable();
+          renderLiveFeedList();
+        }, 1500);
+      }, 1500);
+    }
+
+    // Init
+    window.onload = () => {
+      renderLiveCanvas();
+      renderLiveFeedList();
+      renderViolationsTable();
+      renderZonesGrid();
+      updateMetrics();
+    };
+  </script>
+</body>
+</html>
